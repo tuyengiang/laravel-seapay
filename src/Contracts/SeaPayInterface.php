@@ -41,4 +41,11 @@ interface SeaPayInterface
      * Lấy tên tài khoản đang được sử dụng.
      */
     public function getCurrentAccount(): string;
+
+    /**
+     * Xác minh chữ ký webhook từ SeaPay.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function verifyWebhook(array $data): bool;
 }

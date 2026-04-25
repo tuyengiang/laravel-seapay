@@ -24,6 +24,10 @@ Package Laravel tích hợp cổng thanh toán **SEAPAY**, hỗ trợ:
 - [Cấu hình](#cấu-hình)
   - [Một tài khoản](#một-tài-khoản)
   - [Nhiều tài khoản](#nhiều-tài-khoản)
+- [Account Resolver — nguồn tài khoản động](#account-resolver--nguồn-tài-khoản-động)
+  - [Driver: database](#driver-database)
+  - [Driver: chain](#driver-chain)
+  - [Driver: custom](#driver-custom)
 - [Sử dụng](#sử-dụng)
   - [Tạo thanh toán](#tạo-thanh-toán)
   - [Chọn tài khoản cụ thể](#chọn-tài-khoản-cụ-thể)
@@ -144,6 +148,127 @@ SEAPAY_HCM_MERCHANT_ID=merchant_hcm
 SEAPAY_HCM_API_KEY=apikey_hcm
 SEAPAY_HCM_SECRET_KEY=secret_hcm
 ```
+
+---
+
+## Account Resolver — nguồn tài khoản động
+
+Mặc định package đọc tài khoản từ `config/seapay.php`. Bạn có thể chuyển sang lấy từ **database**, kết hợp cả hai, hoặc tự viết resolver riêng — không cần sửa code nghiệp vụ.
+
+Chọn driver trong `.env`:
+
+```env
+SEAPAY_RESOLVER=config     # Mặc định — lấy từ config/seapay.php
+SEAPAY_RESOLVER=database   # Lấy từ bảng seapay_accounts trong DB
+SEAPAY_RESOLVER=chain      # Thử DB trước, fallback về config
+SEAPAY_RESOLVER=custom     # Dùng class tự viết
+```
+
+---
+
+### Driver: database
+
+Lưu tài khoản vào bảng `seapay_accounts` (tạo bằng migration đã publish):
+
+```bash
+php artisan vendor:publish --tag=seapay-migrations
+php artisan migrate
+```
+
+Thêm tài khoản vào DB:
+
+```php
+use SeaPay\LaravelSeaPay\Models\SeaPayAccount;
+
+SeaPayAccount::create([
+    'name'        => 'store_hanoi',
+    'merchant_id' => 'MERCHANT_HN_001',
+    'api_key'     => 'ak_hanoi_xxxxx',
+    'secret_key'  => 'sk_hanoi_xxxxx',
+    'description' => 'Chi nhánh Hà Nội',
+    'is_active'   => true,
+]);
+```
+
+Bật driver:
+
+```env
+SEAPAY_RESOLVER=database
+```
+
+Tài khoản được **cache 5 phút** mặc định. Khi cập nhật credentials, xóa cache:
+
+```php
+use SeaPay\LaravelSeaPay\AccountResolvers\DatabaseAccountResolver;
+
+app(DatabaseAccountResolver::class)->clearCache('store_hanoi');
+```
+
+Tuỳ chỉnh cache trong `config/seapay.php`:
+
+```php
+'account_resolver' => [
+    'driver'       => 'database',
+    'table'        => 'seapay_accounts', // Tên bảng
+    'cache_ttl'    => 300,               // Giây, 0 = tắt cache
+    'cache_prefix' => 'seapay_account_',
+],
+```
+
+---
+
+### Driver: chain
+
+Thử tìm trong **DB trước**, nếu không có thì **fallback về config**. Phù hợp khi một số tài khoản cố định trong config, một số lấy động từ DB.
+
+```env
+SEAPAY_RESOLVER=chain
+```
+
+---
+
+### Driver: custom
+
+Tự viết resolver khi cần lấy tài khoản từ nguồn bất kỳ (API, Redis, file JSON, ...):
+
+```php
+// app/Services/MySeaPayResolver.php
+namespace App\Services;
+
+use SeaPay\LaravelSeaPay\Contracts\AccountResolverInterface;
+
+class MySeaPayResolver implements AccountResolverInterface
+{
+    public function resolve(string $accountName): ?array
+    {
+        // Ví dụ: lấy từ Redis
+        $data = cache("seapay:{$accountName}");
+        return $data ? json_decode($data, true) : null;
+    }
+
+    public function all(): array
+    {
+        // Trả về toàn bộ tài khoản
+        return [];
+    }
+
+    public function has(string $accountName): bool
+    {
+        return $this->resolve($accountName) !== null;
+    }
+}
+```
+
+Khai báo trong `config/seapay.php`:
+
+```php
+'account_resolver' => [
+    'driver' => 'custom',
+    'class'  => \App\Services\MySeaPayResolver::class,
+],
+```
+
+> Mọi resolver đều phải trả về array gồm `merchant_id`, `api_key`, `secret_key` (và `description` tùy chọn).
 
 ---
 

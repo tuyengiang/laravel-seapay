@@ -69,6 +69,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Account Resolver — nguồn dữ liệu tài khoản
+    |--------------------------------------------------------------------------
+    | driver:
+    |   'config'   — lấy từ mảng 'accounts' bên trên (mặc định)
+    |   'database' — lấy từ bảng seapay_accounts trong DB
+    |   'chain'    — thử DB trước, fallback về config
+    |   'custom'   — dùng class tự viết, khai báo trong 'class'
+    */
+    'account_resolver' => [
+        'driver' => env('SEAPAY_RESOLVER', 'config'), // config | database | chain | custom
+
+        // Cấu hình khi dùng driver 'database' hoặc 'chain'
+        'table'        => 'seapay_accounts',
+        'cache_ttl'    => 300,  // giây, 0 = tắt cache
+        'cache_prefix' => 'seapay_account_',
+
+        // Class tự viết khi dùng driver 'custom'
+        // Phải implement AccountResolverInterface
+        'class' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cấu hình Webhook
     |--------------------------------------------------------------------------
     */

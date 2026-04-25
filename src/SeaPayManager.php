@@ -4,6 +4,7 @@ namespace SeaPay\LaravelSeaPay;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use SeaPay\LaravelSeaPay\Contracts\AccountResolverInterface;
 use SeaPay\LaravelSeaPay\Contracts\SeaPayInterface;
 use SeaPay\LaravelSeaPay\DTO\PaymentRequest;
 use SeaPay\LaravelSeaPay\DTO\PaymentResponse;
@@ -24,13 +25,14 @@ class SeaPayManager implements SeaPayInterface
     public function __construct(
         private readonly array $config,
         private readonly SeaPayClient $client,
+        private readonly AccountResolverInterface $resolver,
     ) {
         $this->currentAccount = $config['default'] ?? 'main';
     }
 
     public function account(string $name): static
     {
-        if (!isset($this->config['accounts'][$name])) {
+        if (!$this->resolver->has($name)) {
             throw InvalidAccountException::notFound($name);
         }
 
@@ -107,7 +109,7 @@ class SeaPayManager implements SeaPayInterface
         return array_map(fn ($acc) => [
             'merchant_id' => $acc['merchant_id'] ?? null,
             'description' => $acc['description'] ?? null,
-        ], $this->config['accounts'] ?? []);
+        ], $this->resolver->all());
     }
 
     public function getCurrentAccount(): string
@@ -134,11 +136,13 @@ class SeaPayManager implements SeaPayInterface
     /** @return array<string, mixed> */
     private function getAccountConfig(): array
     {
-        if (!isset($this->config['accounts'][$this->currentAccount])) {
+        $config = $this->resolver->resolve($this->currentAccount);
+
+        if ($config === null) {
             throw InvalidAccountException::notFound($this->currentAccount);
         }
 
-        return $this->config['accounts'][$this->currentAccount];
+        return $config;
     }
 
     private function saveTransaction(PaymentRequest $request, PaymentResponse $response): void

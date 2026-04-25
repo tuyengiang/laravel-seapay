@@ -3,6 +3,10 @@
 namespace SeaPay\LaravelSeaPay;
 
 use Illuminate\Support\ServiceProvider;
+use SeaPay\LaravelSeaPay\AccountResolvers\ChainAccountResolver;
+use SeaPay\LaravelSeaPay\AccountResolvers\ConfigAccountResolver;
+use SeaPay\LaravelSeaPay\AccountResolvers\DatabaseAccountResolver;
+use SeaPay\LaravelSeaPay\Contracts\AccountResolverInterface;
 use SeaPay\LaravelSeaPay\Contracts\SeaPayInterface;
 use SeaPay\LaravelSeaPay\Http\Middleware\VerifySeaPayWebhook;
 
@@ -16,10 +20,15 @@ class SeaPayServiceProvider extends ServiceProvider
             return new SeaPayClient($app['config']['seapay']);
         });
 
+        $this->app->singleton(AccountResolverInterface::class, function ($app) {
+            return $this->buildResolver($app['config']['seapay']);
+        });
+
         $this->app->singleton(SeaPayInterface::class, function ($app) {
             return new SeaPayManager(
                 $app['config']['seapay'],
                 $app->make(SeaPayClient::class),
+                $app->make(AccountResolverInterface::class),
             );
         });
 
@@ -35,6 +44,43 @@ class SeaPayServiceProvider extends ServiceProvider
 
         $this->loadRoutesFrom(__DIR__ . '/Routes/web.php');
         $this->registerMiddleware();
+    }
+
+    private function buildResolver(array $config): AccountResolverInterface
+    {
+        $driver = $config['account_resolver']['driver'] ?? 'config';
+
+        return match ($driver) {
+            'database' => new DatabaseAccountResolver($config),
+            'chain'    => new ChainAccountResolver([
+                new DatabaseAccountResolver($config),
+                new ConfigAccountResolver($config),
+            ]),
+            'custom'   => $this->buildCustomResolver($config),
+            default    => new ConfigAccountResolver($config),
+        };
+    }
+
+    private function buildCustomResolver(array $config): AccountResolverInterface
+    {
+        $class = $config['account_resolver']['class'] ?? null;
+
+        if (!$class || !class_exists($class)) {
+            throw new \InvalidArgumentException(
+                "SeaPay: custom account resolver '{$class}' không tồn tại. " .
+                "Hãy khai báo 'class' trong config seapay.account_resolver."
+            );
+        }
+
+        $resolver = $this->app->make($class);
+
+        if (!$resolver instanceof AccountResolverInterface) {
+            throw new \InvalidArgumentException(
+                "SeaPay: '{$class}' phải implement AccountResolverInterface."
+            );
+        }
+
+        return $resolver;
     }
 
     private function publishConfig(): void
@@ -53,7 +99,6 @@ class SeaPayServiceProvider extends ServiceProvider
 
     private function registerMiddleware(): void
     {
-        $router = $this->app['router'];
-        $router->aliasMiddleware('seapay.webhook', VerifySeaPayWebhook::class);
+        $this->app['router']->aliasMiddleware('seapay.webhook', VerifySeaPayWebhook::class);
     }
 }
