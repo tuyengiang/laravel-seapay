@@ -4,10 +4,13 @@ namespace SeaPay\LaravelSeaPay;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use SeaPay\LaravelSeaPay\Contracts\AccountResolverInterface;
 use SeaPay\LaravelSeaPay\Contracts\SeaPayInterface;
 use SeaPay\LaravelSeaPay\DTO\PaymentRequest;
 use SeaPay\LaravelSeaPay\DTO\PaymentResponse;
+use SeaPay\LaravelSeaPay\DTO\PaymentSession;
 use SeaPay\LaravelSeaPay\DTO\RefundRequest;
 use SeaPay\LaravelSeaPay\DTO\RefundResponse;
 use SeaPay\LaravelSeaPay\DTO\TransactionQueryResponse;
@@ -173,6 +176,25 @@ class SeaPayManager implements SeaPayInterface
         } catch (\Throwable $e) {
             $this->log('warning', 'Không thể lưu giao dịch vào database: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Tạo phiên thanh toán và chuyển hướng tới trang thanh toán tích hợp sẵn.
+     * Trang này hiển thị mã QR, countdown và thông tin đơn hàng.
+     */
+    public function paymentPage(PaymentResponse $response, PaymentRequest $originalRequest): RedirectResponse
+    {
+        $session = PaymentSession::create($response, $originalRequest, $this->currentAccount);
+
+        $ttl = 3600;
+        if ($session->expiredAt) {
+            $expiry = \Carbon\Carbon::parse($session->expiredAt);
+            $ttl    = max(300, $expiry->diffInSeconds(now()) + 300);
+        }
+
+        Cache::put('seapay_session_' . $session->token, $session->toArray(), $ttl);
+
+        return redirect()->route('seapay.payment.show', ['token' => $session->token]);
     }
 
     /** @param array<string, mixed> $context */

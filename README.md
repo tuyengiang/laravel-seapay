@@ -429,6 +429,60 @@ foreach ($accounts as $name => $info) {
 
 ---
 
+## Trang thanh toán tích hợp
+
+Package cung cấp sẵn trang thanh toán với:
+- **Mã QR** tự động render từ dữ liệu SeaPay API
+- **Countdown** đếm ngược theo `expired_at`, chuyển đỏ khi < 60 giây
+- **Thông tin chuyển khoản** (ngân hàng, số tài khoản, nội dung) với nút sao chép
+- **Tự động polling** kiểm tra trạng thái mỗi 5 giây
+- **Overlay** thành công / thất bại / hết hạn với redirect tự động
+
+### Cách dùng
+
+```php
+// Trong controller của bạn
+use SeaPay\LaravelSeaPay\Facades\SeaPay;
+use SeaPay\LaravelSeaPay\DTO\PaymentRequest;
+
+public function pay(Request $request)
+{
+    $paymentRequest = new PaymentRequest(
+        orderId:      'ORDER-001',
+        amount:       250000,
+        description:  'Thanh toán đơn hàng',
+        returnUrl:    route('payment.success'),  // redirect sau khi trả thành công
+        cancelUrl:    route('payment.cancel'),
+        expiredAt:    now()->addMinutes(15)->toIso8601String(),
+        customerName: 'Nguyễn Văn A',
+    );
+
+    $response = SeaPay::createPayment($paymentRequest);
+
+    // Chuyển tới trang thanh toán tích hợp
+    return SeaPay::paymentPage($response, $paymentRequest);
+}
+```
+
+Trang thanh toán sẽ tự động:
+1. Hiển thị QR code để quét
+2. Đếm ngược thời gian còn lại
+3. Kiểm tra trạng thái mỗi 5 giây
+4. Khi thanh toán xong → redirect tới `returnUrl`
+5. Khi hết hạn → hiện overlay hết hạn
+
+### Tuỳ chỉnh giao diện
+
+Publish view để tuỳ chỉnh HTML/CSS:
+
+```bash
+php artisan vendor:publish --tag=seapay-views
+```
+
+File view sẽ được copy vào `resources/views/vendor/seapay/payment.blade.php`.
+
+---
+
 ## Webhook
 
 ### Cấu hình webhook

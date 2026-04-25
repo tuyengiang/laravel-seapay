@@ -15,7 +15,8 @@
         "illuminate/contracts": "^10.0|^11.0|^12.0",
         "illuminate/support": "^10.0|^11.0|^12.0",
         "illuminate/http": "^10.0|^11.0|^12.0",
-        "guzzlehttp/guzzle": "^7.5"
+        "guzzlehttp/guzzle": "^7.5",
+        "nesbot/carbon": "^2.0|^3.0"
     },
     "require-dev": {
         "orchestra/testbench": "^8.0|^9.0",

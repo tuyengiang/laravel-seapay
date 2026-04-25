@@ -43,6 +43,7 @@ class SeaPayServiceProvider extends ServiceProvider
         }
 
         $this->loadRoutesFrom(__DIR__ . '/Routes/web.php');
+        $this->registerViews();
         $this->registerMiddleware();
     }
 
@@ -81,6 +82,15 @@ class SeaPayServiceProvider extends ServiceProvider
         }
 
         return $resolver;
+    }
+
+    private function registerViews(): void
+    {
+        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'seapay');
+
+        $this->publishes([
+            __DIR__ . '/../resources/views' => resource_path('views/vendor/seapay'),
+        ], 'seapay-views');
     }
 
     private function publishConfig(): void

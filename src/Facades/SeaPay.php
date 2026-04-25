@@ -19,6 +19,7 @@ use SeaPay\LaravelSeaPay\SeaPayManager;
  * @method static array getAccounts()
  * @method static string getCurrentAccount()
  * @method static bool verifyWebhook(array $data)
+ * @method static \Illuminate\Http\RedirectResponse paymentPage(PaymentResponse $response, PaymentRequest $originalRequest)
  *
  * @see SeaPayManager
  */
