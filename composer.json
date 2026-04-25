@@ -1,0 +1,50 @@
+{
+    "name": "seapay/laravel-seapay",
+    "description": "Laravel package tích hợp cổng thanh toán SEAPAY với hỗ trợ đa tài khoản",
+    "keywords": ["laravel", "seapay", "payment", "gateway", "vietnam"],
+    "homepage": "https://github.com/seapay/laravel-seapay",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "SeaPay Laravel",
+            "email": "dev@seapay.vn"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/contracts": "^10.0|^11.0|^12.0",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/http": "^10.0|^11.0|^12.0",
+        "guzzlehttp/guzzle": "^7.5"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "phpunit/phpunit": "^10.0|^11.0",
+        "mockery/mockery": "^1.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "SeaPay\\LaravelSeaPay\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SeaPay\\LaravelSeaPay\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SeaPay\\LaravelSeaPay\\SeaPayServiceProvider"
+            ],
+            "aliases": {
+                "SeaPay": "SeaPay\\LaravelSeaPay\\Facades\\SeaPay"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
